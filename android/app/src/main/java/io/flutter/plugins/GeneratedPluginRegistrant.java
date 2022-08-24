@@ -16,6 +16,11 @@ public final class GeneratedPluginRegistrant {
   private static final String TAG = "GeneratedPluginRegistrant";
   public static void registerWith(@NonNull FlutterEngine flutterEngine) {
     try {
+      flutterEngine.getPlugins().add(new com.apphud.fluttersdk.ApphudPlugin());
+    } catch(Exception e) {
+      Log.e(TAG, "Error registering plugin apphud, com.apphud.fluttersdk.ApphudPlugin", e);
+    }
+    try {
       flutterEngine.getPlugins().add(new io.flutter.plugins.inapppurchase.InAppPurchasePlugin());
     } catch(Exception e) {
       Log.e(TAG, "Error registering plugin in_app_purchase_android, io.flutter.plugins.inapppurchase.InAppPurchasePlugin", e);

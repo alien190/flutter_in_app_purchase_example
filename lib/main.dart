@@ -4,10 +4,14 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'package:apphud/apphud.dart';
+import 'package:apphud/models/apphud_models/apphud_debug_level.dart';
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:in_app_purchase_example/app_secrets_android.dart';
+import 'package:in_app_purchase_example/app_secrets_ios.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import 'package:in_app_purchase_storekit/store_kit_wrappers.dart';
 import 'consumable_store.dart';
@@ -22,15 +26,11 @@ void main() {
 // To try without auto-consume on another platform, change `true` to `false` here.
 final bool _kAutoConsume = Platform.isIOS || true;
 
-const String _kConsumableId = 'consumable';
-const String _kUpgradeId = 'upgrade';
-const String _kSilverSubscriptionId = 'subscription_silver';
-const String _kGoldSubscriptionId = 'subscription_gold';
-const List<String> _kProductIds = <String>[
-  _kConsumableId,
-  _kUpgradeId,
-  _kSilverSubscriptionId,
-  _kGoldSubscriptionId,
+final String _kSubscriptionId = Platform.isAndroid
+    ? 'com.apphud.demo.subscriptions.weekly1'
+    : 'subscription_gold';
+final List<String> _kProductIds = <String>[
+  _kSubscriptionId,
 ];
 
 class _MyApp extends StatefulWidget {
@@ -52,6 +52,8 @@ class _MyAppState extends State<_MyApp> {
 
   @override
   void initState() {
+    _initApphud();
+
     final Stream<List<PurchaseDetails>> purchaseUpdated =
         _inAppPurchase.purchaseStream;
     _subscription =
@@ -64,6 +66,18 @@ class _MyAppState extends State<_MyApp> {
     });
     initStoreInfo();
     super.initState();
+  }
+
+  Future<void> _initApphud() async {
+    final appSecrets =
+        Platform.isAndroid ? AppSecretsAndroid() : AppSecretsIos();
+    await Apphud.enableDebugLogs(level: ApphudDebugLevel.high);
+    await Apphud.startManually(
+      apiKey: appSecrets.apiKey,
+      userID: appSecrets.userID,
+      deviceID: appSecrets.deviceID,
+      observerMode: appSecrets.observeMode,
+    );
   }
 
   Future<void> initStoreInfo() async {
@@ -150,7 +164,6 @@ class _MyAppState extends State<_MyApp> {
           children: <Widget>[
             _buildConnectionCheckTile(),
             _buildProductList(),
-            _buildConsumableBox(),
             _buildRestoreButton(),
           ],
         ),
@@ -274,8 +287,7 @@ class _MyAppState extends State<_MyApp> {
                       // verify the latest status of you your subscription by using server side receipt validation
                       // and update the UI accordingly. The subscription purchase status shown
                       // inside the app may not be accurate.
-                      final GooglePlayPurchaseDetails? oldSubscription =
-                          _getOldSubscription(productDetails, purchases);
+                      final GooglePlayPurchaseDetails? oldSubscription = null;
 
                       purchaseParam = GooglePlayPurchaseParam(
                           productDetails: productDetails,
@@ -292,14 +304,8 @@ class _MyAppState extends State<_MyApp> {
                       );
                     }
 
-                    if (productDetails.id == _kConsumableId) {
-                      _inAppPurchase.buyConsumable(
-                          purchaseParam: purchaseParam,
-                          autoConsume: _kAutoConsume);
-                    } else {
-                      _inAppPurchase.buyNonConsumable(
-                          purchaseParam: purchaseParam);
-                    }
+                    _inAppPurchase.buyNonConsumable(
+                        purchaseParam: purchaseParam);
                   },
                   child: Text(productDetails.price),
                 ),
@@ -310,44 +316,6 @@ class _MyAppState extends State<_MyApp> {
     return Card(
         child: Column(
             children: <Widget>[productHeader, const Divider()] + productList));
-  }
-
-  Card _buildConsumableBox() {
-    if (_loading) {
-      return const Card(
-          child: ListTile(
-              leading: CircularProgressIndicator(),
-              title: Text('Fetching consumables...')));
-    }
-    if (!_isAvailable || _notFoundIds.contains(_kConsumableId)) {
-      return const Card();
-    }
-    const ListTile consumableHeader =
-        ListTile(title: Text('Purchased consumables'));
-    final List<Widget> tokens = _consumables.map((String id) {
-      return GridTile(
-        child: IconButton(
-          icon: const Icon(
-            Icons.stars,
-            size: 42.0,
-            color: Colors.orange,
-          ),
-          splashColor: Colors.yellowAccent,
-          onPressed: () => consume(id),
-        ),
-      );
-    }).toList();
-    return Card(
-        child: Column(children: <Widget>[
-      consumableHeader,
-      const Divider(),
-      GridView.count(
-        crossAxisCount: 5,
-        shrinkWrap: true,
-        padding: const EdgeInsets.all(16.0),
-        children: tokens,
-      )
-    ]));
   }
 
   Widget _buildRestoreButton() {
@@ -391,19 +359,10 @@ class _MyAppState extends State<_MyApp> {
 
   Future<void> deliverProduct(PurchaseDetails purchaseDetails) async {
     // IMPORTANT!! Always verify purchase details before delivering the product.
-    if (purchaseDetails.productID == _kConsumableId) {
-      await ConsumableStore.save(purchaseDetails.purchaseID!);
-      final List<String> consumables = await ConsumableStore.load();
-      setState(() {
-        _purchasePending = false;
-        _consumables = consumables;
-      });
-    } else {
-      setState(() {
-        _purchases.add(purchaseDetails);
-        _purchasePending = false;
-      });
-    }
+    setState(() {
+      _purchases.add(purchaseDetails);
+      _purchasePending = false;
+    });
   }
 
   void handleError(IAPError error) {
@@ -438,14 +397,6 @@ class _MyAppState extends State<_MyApp> {
           } else {
             _handleInvalidPurchase(purchaseDetails);
             return;
-          }
-        }
-        if (Platform.isAndroid) {
-          if (!_kAutoConsume && purchaseDetails.productID == _kConsumableId) {
-            final InAppPurchaseAndroidPlatformAddition androidAddition =
-                _inAppPurchase.getPlatformAddition<
-                    InAppPurchaseAndroidPlatformAddition>();
-            await androidAddition.consumePurchase(purchaseDetails);
           }
         }
         if (purchaseDetails.pendingCompletePurchase) {
@@ -483,28 +434,6 @@ class _MyAppState extends State<_MyApp> {
               .getPlatformAddition<InAppPurchaseStoreKitPlatformAddition>();
       await iapStoreKitPlatformAddition.showPriceConsentIfNeeded();
     }
-  }
-
-  GooglePlayPurchaseDetails? _getOldSubscription(
-      ProductDetails productDetails, Map<String, PurchaseDetails> purchases) {
-    // This is just to demonstrate a subscription upgrade or downgrade.
-    // This method assumes that you have only 2 subscriptions under a group, 'subscription_silver' & 'subscription_gold'.
-    // The 'subscription_silver' subscription can be upgraded to 'subscription_gold' and
-    // the 'subscription_gold' subscription can be downgraded to 'subscription_silver'.
-    // Please remember to replace the logic of finding the old subscription Id as per your app.
-    // The old subscription is only required on Android since Apple handles this internally
-    // by using the subscription group feature in iTunesConnect.
-    GooglePlayPurchaseDetails? oldSubscription;
-    if (productDetails.id == _kSilverSubscriptionId &&
-        purchases[_kGoldSubscriptionId] != null) {
-      oldSubscription =
-          purchases[_kGoldSubscriptionId]! as GooglePlayPurchaseDetails;
-    } else if (productDetails.id == _kGoldSubscriptionId &&
-        purchases[_kSilverSubscriptionId] != null) {
-      oldSubscription =
-          purchases[_kSilverSubscriptionId]! as GooglePlayPurchaseDetails;
-    }
-    return oldSubscription;
   }
 }
 

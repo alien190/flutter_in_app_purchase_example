@@ -13,6 +13,8 @@ dependencies:
 
   shared_preferences: ^2.0.0
 
+  apphud: ^2.2.4
+
 dev_dependencies:
   flutter_driver:
     sdk: flutter

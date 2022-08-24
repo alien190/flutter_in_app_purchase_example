@@ -76,6 +76,7 @@ android {
         versionCode project.VERSION_CODE
         versionName project.VERSION_NAME
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        multiDexEnabled true
     }
 
     buildTypes {
@@ -112,4 +113,5 @@ dependencies {
     testImplementation 'org.json:json:20180813'
     androidTestImplementation 'androidx.test:runner:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1'
+    implementation "androidx.multidex:multidex:2.0.1"
 }
