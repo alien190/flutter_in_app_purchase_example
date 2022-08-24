@@ -28,7 +28,7 @@ final bool _kAutoConsume = Platform.isIOS || true;
 
 final String _kSubscriptionId = Platform.isAndroid
     ? 'com.apphud.demo.subscriptions.weekly1'
-    : 'subscription_gold';
+    : 'com.apphud.year';
 final List<String> _kProductIds = <String>[
   _kSubscriptionId,
 ];
