@@ -4,10 +4,10 @@ packages:
   apphud:
     dependency: "direct main"
     description:
-      name: apphud
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "2.2.4"
+      path: apphud
+      relative: true
+    source: path
+    version: "2.2.5"
   archive:
     dependency: transitive
     description:
